@@ -1,0 +1,10 @@
+{
+  "name": "ru-science-search",
+  "description": "Поиск научных статей в КиберЛенинке (русскоязычные журналы, отметка ВАК) и OpenAlex: авторы, год, журнал, аннотация и ссылка. Только стандартная библиотека Python, ключ OpenAlex необязателен.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Arseni Okhrimenko",
+    "url": "https://github.com/boundlessend"
+  },
+  "homepage": "https://github.com/boundlessend/ru-science-search"
+}
