@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """поиск научных статей в киберленинке и openalex, только стандартная библиотека"""
 
+# аннотации остаются строками: системный python3 на macOS это 3.9, где X | None
+# в аннотациях без этого импорта не вычисляется
+from __future__ import annotations
+
 import argparse
 import html
 import http.client
@@ -18,7 +22,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from email.message import Message
-from typing import Literal, TypedDict, assert_never, cast
+from typing import Literal, Optional, TypedDict, cast
 
 SourceName = Literal["cyberleninka", "openalex"]
 
@@ -427,21 +431,17 @@ def parse_openalex(text: str) -> SearchResult:
 
 
 def run_search(args: SearchArgs) -> SearchResult:
-    match args.source:
-        case "cyberleninka":
-            request = build_cyberleninka_request(args, date.today().year)
-            return parse_cyberleninka(fetch_text(request))
-        case "openalex":
-            api_key = read_openalex_api_key()
-            if api_key is None:
-                log_event(
-                    "openalex_without_api_key",
-                    {"env_var": OPENALEX_KEY_ENV, "keychain_service": OPENALEX_KEYCHAIN_SERVICE},
-                )
-            request = build_openalex_request(args, api_key)
-            return parse_openalex(fetch_text(request))
-        case _:
-            assert_never(args.source)
+    if args.source == "cyberleninka":
+        request = build_cyberleninka_request(args, date.today().year)
+        return parse_cyberleninka(fetch_text(request))
+    api_key = read_openalex_api_key()
+    if api_key is None:
+        log_event(
+            "openalex_without_api_key",
+            {"env_var": OPENALEX_KEY_ENV, "keychain_service": OPENALEX_KEYCHAIN_SERVICE},
+        )
+    request = build_openalex_request(args, api_key)
+    return parse_openalex(fetch_text(request))
 
 
 def format_authors(authors: Sequence[str]) -> str:
@@ -521,7 +521,7 @@ def parse_args(argv: Sequence[str]) -> SearchArgs:
         query=cast(str, namespace.query),
         limit=cast(int, namespace.limit),
         page=cast(int, namespace.page),
-        year_from=cast(int | None, namespace.year_from),
+        year_from=cast(Optional[int], namespace.year_from),
         vak_only=cast(bool, namespace.vak_only),
     )
 
