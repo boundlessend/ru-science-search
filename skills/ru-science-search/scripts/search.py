@@ -58,6 +58,9 @@ CYBERLENINKA_FOUND_CAP = 1000
 CYBERLENINKA_VAK_CATALOG_ID = 8
 MAX_LIMIT = 50
 MAX_SHOWN_AUTHORS = 5
+# агенту нужна одна строка о том, чем статья подходит, а целиком аннотации занимают
+# больше половины вывода; полный текст есть по ссылке
+ABSTRACT_MAX_CHARS = 320
 TAG_PATTERN = re.compile(r"<[^>]+>")
 SOURCE_TITLES: Mapping[SourceName, str] = {"cyberleninka": "КиберЛенинка", "openalex": "OpenAlex"}
 
@@ -444,6 +447,13 @@ def run_search(args: SearchArgs) -> SearchResult:
     return parse_openalex(fetch_text(request))
 
 
+def shorten(text: str, limit: int) -> str:
+    """обрезать по границе слова, отметив обрезку многоточием"""
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0] + "…"
+
+
 def format_authors(authors: Sequence[str]) -> str:
     shown = ", ".join(authors[:MAX_SHOWN_AUTHORS])
     hidden_count = len(authors) - MAX_SHOWN_AUTHORS
@@ -463,7 +473,7 @@ def format_paper(number: int, paper: Paper) -> str:
     lines.append(f"   {' | '.join(details)}")
     lines.append(f"   Ссылка: {paper.url}")
     if paper.abstract:
-        lines.append(f"   Аннотация: {paper.abstract}")
+        lines.append(f"   Аннотация: {shorten(paper.abstract, ABSTRACT_MAX_CHARS)}")
     return "\n".join(lines)
 
 
