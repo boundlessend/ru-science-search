@@ -22,12 +22,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from email.message import Message
-from typing import Literal, Optional, TypedDict, cast
+from typing import Literal, Optional, TypedDict, Union, cast
 
 SourceName = Literal["cyberleninka", "openalex"]
 
 CYBERLENINKA_BASE_URL = "https://cyberleninka.ru"
 CYBERLENINKA_SEARCH_URL = f"{CYBERLENINKA_BASE_URL}/api/search"
+CYBERLENINKA_ARTICLE_PREFIX = f"{CYBERLENINKA_BASE_URL}/article/"
 # киберленинка фильтрует по годам только при обеих границах: при одной --year-to
 # нижней границей уходит год заведомо раньше любого архива
 CYBERLENINKA_EARLIEST_YEAR = 1800
@@ -168,6 +169,21 @@ class SearchArgs:
     year_from: int | None
     year_to: int | None
     vak_only: bool
+
+
+@dataclass(frozen=True)
+class DetailsArgs:
+    url: str
+
+
+@dataclass(frozen=True)
+class ArticleDetails:
+    """готовые библиографические ссылки со страницы статьи киберленинки"""
+
+    url: str
+    gost_print: str
+    gost_electronic: str
+    doi: str
 
 
 @dataclass(frozen=True)
@@ -464,6 +480,50 @@ def run_search(args: SearchArgs) -> SearchResult:
     return parse_openalex(fetch_text(request))
 
 
+def read_page_quote(page: str, key: str) -> str | None:
+    """строковое поле из объекта quotes, который страница статьи передаёт своему скрипту
+
+    значение записано литералом js с экранированием json (\\/, \\u0022), поэтому
+    раскодируется через json
+    """
+    found = re.search(r"\b" + key + r':\s*"((?:[^"\\]|\\.)*)"', page)
+    if found is None:
+        return None
+    return " ".join(cast(str, json.loads(f'"{found.group(1)}"')).split())
+
+
+def parse_cyberleninka_article(page: str, url: str) -> ArticleDetails:
+    gost_print = read_page_quote(page, "gost_print")
+    gost_electronic = read_page_quote(page, "gost_electronic")
+    if gost_print is None or gost_electronic is None:
+        raise UnexpectedResponseError(
+            f"на странице {url} нет блока цитирования, вероятно капча или сменилась вёрстка; "
+            f"начало ответа: {page[:BODY_SNIPPET_CHARS]}"
+        )
+    return ArticleDetails(
+        url=url,
+        gost_print=gost_print,
+        gost_electronic=gost_electronic,
+        doi=read_page_quote(page, "doi") or "",
+    )
+
+
+def run_details(args: DetailsArgs) -> ArticleDetails:
+    request = HttpRequest(url=args.url, method="GET", body=None, headers={"User-Agent": USER_AGENT})
+    return parse_cyberleninka_article(fetch_text(request), args.url)
+
+
+def format_details(details: ArticleDetails) -> str:
+    lines = [
+        f"КиберЛенинка: {details.url}",
+        f"ГОСТ, печатное издание: {details.gost_print}",
+        f"ГОСТ, электронный ресурс: {details.gost_electronic}",
+    ]
+    if details.doi:
+        lines.append(f"DOI: https://doi.org/{details.doi}")
+    return "\n".join(lines)
+
+
 def shorten(text: str, limit: int) -> str:
     """обрезать по границе слова, отметив обрезку многоточием"""
     if len(text) <= limit:
@@ -532,24 +592,42 @@ def page_value(value: str) -> int:
     return page
 
 
-def parse_args(argv: Sequence[str]) -> SearchArgs:
-    parser = argparse.ArgumentParser(description="поиск научных статей в киберленинке и openalex")
-    parser.add_argument("source", choices=("cyberleninka", "openalex"))
+def article_url(value: str) -> str:
+    url = value.strip()
+    if not url.startswith(CYBERLENINKA_ARTICLE_PREFIX):
+        raise argparse.ArgumentTypeError(f"нужна ссылка на статью вида {CYBERLENINKA_ARTICLE_PREFIX}..., получено {url}")
+    return url
+
+
+def add_search_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--query", required=True, type=non_empty_query)
     parser.add_argument("--limit", required=True, type=limit_value)
     parser.add_argument("--page", required=True, type=page_value)
     parser.add_argument("--year-from", type=int)
     parser.add_argument("--year-to", type=int)
-    parser.add_argument("--vak-only", action="store_true")
+
+
+def parse_args(argv: Sequence[str]) -> Union[SearchArgs, DetailsArgs]:
+    parser = argparse.ArgumentParser(description="поиск научных статей в киберленинке и openalex")
+    commands = parser.add_subparsers(dest="command", required=True)
+    cyberleninka = commands.add_parser("cyberleninka", help="поиск в киберленинке")
+    add_search_arguments(cyberleninka)
+    cyberleninka.add_argument("--vak-only", action="store_true", help="только журналы из перечня ВАК")
+    openalex = commands.add_parser("openalex", help="поиск в openalex")
+    add_search_arguments(openalex)
+    # в openalex отметки ВАК нет
+    openalex.set_defaults(vak_only=False)
+    details = commands.add_parser("details", help="готовые ссылки по ГОСТ и DOI статьи киберленинки")
+    details.add_argument("--url", required=True, type=article_url)
     namespace = parser.parse_args(argv)
-    if namespace.vak_only and namespace.source != "cyberleninka":
-        parser.error("--vak-only есть только у cyberleninka: в OpenAlex отметки ВАК нет")
+    if namespace.command == "details":
+        return DetailsArgs(url=cast(str, namespace.url))
     year_from = cast(Optional[int], namespace.year_from)
     year_to = cast(Optional[int], namespace.year_to)
     if year_from is not None and year_to is not None and year_from > year_to:
         parser.error(f"--year-from {year_from} позже --year-to {year_to}")
     return SearchArgs(
-        source=cast(SourceName, namespace.source),
+        source=cast(SourceName, namespace.command),
         query=cast(str, namespace.query),
         limit=cast(int, namespace.limit),
         page=cast(int, namespace.page),
@@ -562,10 +640,13 @@ def parse_args(argv: Sequence[str]) -> SearchArgs:
 def main() -> None:
     args = parse_args(sys.argv[1:])
     try:
-        result = run_search(args)
+        if isinstance(args, DetailsArgs):
+            output = format_details(run_details(args))
+        else:
+            output = format_result(run_search(args), args)
     except (RateLimitError, SearchRequestError, UnexpectedResponseError, KeychainError) as error:
         sys.exit(f"{type(error).__name__}: {error}")
-    print(format_result(result, args))
+    print(output)
 
 
 if __name__ == "__main__":
