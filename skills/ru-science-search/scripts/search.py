@@ -5,6 +5,8 @@ import argparse
 import html
 import http.client
 import json
+import os
+import platform
 import re
 import subprocess
 import sys
@@ -40,6 +42,7 @@ OPENALEX_FIELDS = ",".join(
     )
 )
 OPENALEX_KEYCHAIN_SERVICE = "openalex-api-key"
+OPENALEX_KEY_ENV = "OPENALEX_API_KEY"
 KEYCHAIN_ITEM_NOT_FOUND_EXIT_CODE = 44
 USER_AGENT = "ru-science-search/1.0 (personal academic search)"
 TIMEOUT_SECONDS = 20
@@ -216,7 +219,16 @@ def build_cyberleninka_request(args: SearchArgs, current_year: int) -> HttpReque
 
 
 def read_openalex_api_key() -> str | None:
-    """ключ openalex из связки ключей macOS; None, если записи нет"""
+    """ключ openalex: сначала переменная окружения, затем связка ключей macOS; None, если нет нигде
+
+    без ключа openalex работает, только с меньшим суточным бюджетом, поэтому на системах
+    без связки ключей его отсутствие не ошибка
+    """
+    from_env = os.environ.get(OPENALEX_KEY_ENV, "").strip()
+    if from_env:
+        return from_env
+    if platform.system() != "Darwin":
+        return None
     completed = subprocess.run(
         ["security", "find-generic-password", "-s", OPENALEX_KEYCHAIN_SERVICE, "-w"],
         capture_output=True,
@@ -422,7 +434,10 @@ def run_search(args: SearchArgs) -> SearchResult:
         case "openalex":
             api_key = read_openalex_api_key()
             if api_key is None:
-                log_event("openalex_without_api_key", {"keychain_service": OPENALEX_KEYCHAIN_SERVICE})
+                log_event(
+                    "openalex_without_api_key",
+                    {"env_var": OPENALEX_KEY_ENV, "keychain_service": OPENALEX_KEYCHAIN_SERVICE},
+                )
             request = build_openalex_request(args, api_key)
             return parse_openalex(fetch_text(request))
         case _:
