@@ -35,7 +35,7 @@ python3 "$S" cyberleninka --query "терминологическая эквив
 python3 "$S" openalex --query "terminological equivalence" --limit 10 --page 1 --year-from 2020
 ```
 
-`--limit` от 1 до 50, `--page` начинается с 1. `--year-from` работает в обоих источниках, `--vak-only` только в КиберЛенинке.
+`--limit` от 1 до 50, `--page` начинается с 1. `--year-from` и `--year-to` работают в обоих источниках, `--vak-only` только в КиберЛенинке.
 
 ## Ограничения
 

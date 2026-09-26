@@ -28,6 +28,9 @@ SourceName = Literal["cyberleninka", "openalex"]
 
 CYBERLENINKA_BASE_URL = "https://cyberleninka.ru"
 CYBERLENINKA_SEARCH_URL = f"{CYBERLENINKA_BASE_URL}/api/search"
+# киберленинка фильтрует по годам только при обеих границах: при одной --year-to
+# нижней границей уходит год заведомо раньше любого архива
+CYBERLENINKA_EARLIEST_YEAR = 1800
 OPENALEX_WORKS_URL = "https://api.openalex.org/works"
 OPENALEX_FIELDS = ",".join(
     (
@@ -163,6 +166,7 @@ class SearchArgs:
     limit: int
     page: int
     year_from: int | None
+    year_to: int | None
     vak_only: bool
 
 
@@ -205,16 +209,23 @@ def describe_request(request: HttpRequest) -> str:
 
 
 def build_cyberleninka_request(args: SearchArgs, current_year: int) -> HttpRequest:
-    """киберленинка молча игнорирует year_from без year_to, поэтому верхняя граница всегда текущий год"""
+    """киберленинка молча игнорирует одну границу года без другой, поэтому недостающая
+    подставляется: снизу CYBERLENINKA_EARLIEST_YEAR, сверху текущий год"""
     payload: dict[str, str | int | list[int]] = {
         "mode": "articles",
         "q": args.query,
         "size": args.limit,
         "from": (args.page - 1) * args.limit,
     }
-    if args.year_from is not None:
-        payload["year_from"] = args.year_from
-        payload["year_to"] = current_year
+    if args.year_from is not None or args.year_to is not None:
+        if args.year_from is not None:
+            payload["year_from"] = args.year_from
+        else:
+            payload["year_from"] = CYBERLENINKA_EARLIEST_YEAR
+        if args.year_to is not None:
+            payload["year_to"] = args.year_to
+        else:
+            payload["year_to"] = current_year
     if args.vak_only:
         payload["catalogs"] = [CYBERLENINKA_VAK_CATALOG_ID]
     return HttpRequest(
@@ -258,8 +269,14 @@ def read_openalex_api_key() -> str | None:
 def build_openalex_request(args: SearchArgs, api_key: str | None) -> HttpRequest:
     """ключ уходит заголовком, а не в url: url попадает в тексты ошибок"""
     params = {"search": args.query, "per_page": str(args.limit), "page": str(args.page), "select": OPENALEX_FIELDS}
+    year_filters: list[str] = []
     if args.year_from is not None:
-        params["filter"] = f"publication_year:>{args.year_from - 1}"
+        year_filters.append(f"publication_year:>{args.year_from - 1}")
+    if args.year_to is not None:
+        year_filters.append(f"publication_year:<{args.year_to + 1}")
+    if year_filters:
+        # запятая в filter openalex означает «и»
+        params["filter"] = ",".join(year_filters)
     headers = {"User-Agent": USER_AGENT}
     if api_key is not None:
         headers["Authorization"] = f"Bearer {api_key}"
@@ -522,16 +539,22 @@ def parse_args(argv: Sequence[str]) -> SearchArgs:
     parser.add_argument("--limit", required=True, type=limit_value)
     parser.add_argument("--page", required=True, type=page_value)
     parser.add_argument("--year-from", type=int)
+    parser.add_argument("--year-to", type=int)
     parser.add_argument("--vak-only", action="store_true")
     namespace = parser.parse_args(argv)
     if namespace.vak_only and namespace.source != "cyberleninka":
         parser.error("--vak-only есть только у cyberleninka: в OpenAlex отметки ВАК нет")
+    year_from = cast(Optional[int], namespace.year_from)
+    year_to = cast(Optional[int], namespace.year_to)
+    if year_from is not None and year_to is not None and year_from > year_to:
+        parser.error(f"--year-from {year_from} позже --year-to {year_to}")
     return SearchArgs(
         source=cast(SourceName, namespace.source),
         query=cast(str, namespace.query),
         limit=cast(int, namespace.limit),
         page=cast(int, namespace.page),
-        year_from=cast(Optional[int], namespace.year_from),
+        year_from=year_from,
+        year_to=year_to,
         vak_only=cast(bool, namespace.vak_only),
     )
 
