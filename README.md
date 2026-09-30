@@ -15,6 +15,16 @@ Python 3.9 или новее, только стандартная библиот
 
 Маркетплейс `senya-plugins` лежит в репозитории `yougile-tracking`, поэтому адрес такой.
 
+Другие агенты (Codex, Cursor, GitHub Copilot, Gemini CLI и те, что поддерживают эти установщики): скилл сделан по формату [Agent Skills](https://agentskills.io), подойдёт любая из команд:
+
+```
+npx skills add boundlessend/ru-science-search
+gh skill install boundlessend/ru-science-search ru-science-search
+gemini extensions install https://github.com/boundlessend/ru-science-search
+```
+
+Тогда `search.py` лежит в папке `scripts/` там, куда агент поставил скилл.
+
 ## Ключ OpenAlex
 
 Ключ необязателен: без него OpenAlex даёт около 100 поисков в сутки, с бесплатным ключом около 1000. Сначала ключ ищется в переменной `OPENALEX_API_KEY`, затем, на macOS, в связке ключей. Положить его туда можно в своём терминале:

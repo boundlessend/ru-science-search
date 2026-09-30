@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ru-science-search",
+  "version": "1.1.1",
+  "description": "Поиск научных статей в КиберЛенинке (русскоязычные журналы, отметка ВАК) и OpenAlex: авторы, год, журнал, аннотация и ссылка. Только стандартная библиотека Python, ключ OpenAlex необязателен.",
+  "author": {
+    "name": "Arseni Okhrimenko",
+    "url": "https://github.com/boundlessend"
+  },
+  "homepage": "https://github.com/boundlessend/ru-science-search",
+  "repository": "https://github.com/boundlessend/ru-science-search",
+  "license": "BSD-3-Clause",
+  "keywords": ["cyberleninka", "openalex", "academic-search", "scientific-literature", "russian"]
+}
