@@ -14,6 +14,8 @@ description: >-
 
 Два открытых источника, ключ не обязателен. Запускай оба параллельно отдельными вызовами: выдача и сбои у них независимы.
 
+Путь в командах ведёт в папку этого скила, ту, где лежит этот SKILL.md. Если вместо пути осталась переменная `CLAUDE_SKILL_DIR` (её подставляет только Claude Code), подставь эту папку сам.
+
 ```bash
 python3 "${CLAUDE_SKILL_DIR}/scripts/search.py" cyberleninka --query "терминологическая эквивалентность" --limit 10 --page 1
 python3 "${CLAUDE_SKILL_DIR}/scripts/search.py" openalex --query "terminological equivalence philosophical translation" --limit 10 --page 1
