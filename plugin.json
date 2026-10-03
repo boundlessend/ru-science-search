@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ru-science-search",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Поиск научных статей в КиберЛенинке (русскоязычные журналы, отметка ВАК) и OpenAlex: авторы, год, журнал, аннотация и ссылка. Только стандартная библиотека Python, ключ OpenAlex необязателен.",
   "author": {
     "name": "Arseni Okhrimenko",

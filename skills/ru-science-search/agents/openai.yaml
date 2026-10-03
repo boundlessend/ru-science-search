@@ -1,0 +1,3 @@
+interface:
+  display_name: "Поиск научных статей"
+  short_description: "Статьи из КиберЛенинки и OpenAlex по вашей теме"

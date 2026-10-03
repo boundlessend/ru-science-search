@@ -14,11 +14,11 @@ description: >-
 
 Два открытых источника, ключ не обязателен. Запускай оба параллельно отдельными вызовами: выдача и сбои у них независимы.
 
-Путь в командах ведёт в папку этого скила, ту, где лежит этот SKILL.md. Если вместо пути осталась переменная `CLAUDE_SKILL_DIR` (её подставляет только Claude Code), подставь эту папку сам.
+В командах замени `<skill dir>` абсолютным путём к папке этого скилла, где лежит этот SKILL.md. Путь бери из расположения загруженного скилла: он зависит от агента и способа установки. Переменные оболочки между вызовами инструментов не сохраняются.
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/search.py" cyberleninka --query "терминологическая эквивалентность" --limit 10 --page 1
-python3 "${CLAUDE_SKILL_DIR}/scripts/search.py" openalex --query "terminological equivalence philosophical translation" --limit 10 --page 1
+python3 "<skill dir>/scripts/search.py" cyberleninka --query "терминологическая эквивалентность" --limit 10 --page 1
+python3 "<skill dir>/scripts/search.py" openalex --query "terminological equivalence philosophical translation" --limit 10 --page 1
 ```
 
 `--limit` от 1 до 50. «Ещё» означает тот же запрос с `--page 2`. `--year-from 2020` и `--year-to 2000` ограничивают годы включительно, в обоих источниках, по отдельности или вместе; без них годы не ограничены. `--vak-only` только для `cyberleninka`: оставляет журналы из перечня ВАК, так отвечай на «есть ли статьи ВАК по». Аннотации в выдаче обрезаны до 320 символов, полный текст по ссылке.
@@ -26,7 +26,7 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/search.py" openalex --query "terminological
 Для списка литературы по статье КиберЛенинки:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/search.py" details --url "https://cyberleninka.ru/article/n/..."
+python3 "<skill dir>/scripts/search.py" details --url "https://cyberleninka.ru/article/n/..."
 ```
 
 Выдаёт готовые ссылки сайта по ГОСТ, для печатного издания (с номером выпуска и страницами) и для электронного ресурса, и DOI, если он есть. Каждый вызов это отдельный запрос к сайту, поэтому только для статей, которые пользователь отобрал, не для всей выдачи.

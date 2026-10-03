@@ -1,12 +1,14 @@
-# ru-science-search для Claude Code
+# ru-science-search для Claude Code и Codex
 
-Плагин Claude Code для поиска научных статей в КиберЛенинке (русскоязычные журналы, отметка перечня ВАК) и OpenAlex (мировая база). На просьбу «найди статьи про ...» агент опрашивает оба источника и выдаёт список: название, авторы, год, журнал, ссылка и строка о том, чем статья подходит к теме.
+Плагин для Claude Code и Codex: поиск научных статей в КиберЛенинке (русскоязычные журналы, отметка перечня ВАК) и OpenAlex (мировая база). На просьбу «найди статьи про ...» агент опрашивает оба источника и выдаёт список: название, авторы, год, журнал, ссылка и строка о том, чем статья подходит к теме.
 
 ## Требования
 
 Python 3.9 или новее, только стандартная библиотека. Оба источника работают на любой системе.
 
 ## Установка
+
+### Claude Code
 
 ```
 /plugin marketplace add boundlessend/yougile-tracking
@@ -15,7 +17,24 @@ Python 3.9 или новее, только стандартная библиот
 
 Маркетплейс `senya-plugins` лежит в репозитории `yougile-tracking`, поэтому адрес такой.
 
-Другие агенты (Codex, Cursor, GitHub Copilot, Gemini CLI и те, что поддерживают эти установщики): скилл сделан по формату [Agent Skills](https://agentskills.io), подойдёт любая из команд:
+### Codex
+
+```bash
+codex plugin marketplace add boundlessend/yougile-tracking
+codex plugin add ru-science-search@senya-plugins
+```
+
+В приложении Codex откройте каталог плагинов, выберите источник **Senya Plugins** и установите **ru-science-search**. После установки откройте новый чат.
+
+Для установки только скилла попросите Codex:
+
+```text
+$skill-installer install https://github.com/boundlessend/ru-science-search/tree/main/skills/ru-science-search
+```
+
+### Другие агенты
+
+Скилл сделан по формату [Agent Skills](https://agentskills.io). Выберите установщик, который поддерживает ваш агент:
 
 ```
 npx skills add boundlessend/ru-science-search
@@ -39,8 +58,15 @@ security add-generic-password -U -a "$USER" -s openalex-api-key -w
 
 Скилл срабатывает сам на просьбы вроде «подбери литературу по теме» или «есть ли статьи ВАК по». Вручную:
 
+Путь для плагина Claude Code:
+
 ```bash
 S=$(ls -d ~/.claude/plugins/cache/senya-plugins/ru-science-search/*/skills/ru-science-search/scripts/search.py | tail -1)
+```
+
+Для Codex возьмите путь к установленному скиллу из его расположения в списке skills и задайте `S="<skill dir>/scripts/search.py"`. Затем:
+
+```bash
 python3 "$S" cyberleninka --query "терминологическая эквивалентность" --limit 10 --page 1 --vak-only
 python3 "$S" openalex --query "terminological equivalence" --limit 10 --page 1 --year-from 2020
 ```
@@ -61,12 +87,21 @@ python3 "$S" details --url "https://cyberleninka.ru/article/n/..."
 
 ## Обновление
 
+Claude Code:
+
 ```bash
 claude plugin marketplace update senya-plugins
 claude plugin update ru-science-search@senya-plugins
 ```
 
-После обновления перезапустите Claude Code.
+Codex:
+
+```bash
+codex plugin marketplace upgrade senya-plugins
+codex plugin add ru-science-search@senya-plugins
+```
+
+После обновления перезапустите агент.
 
 ## Лицензия
 
